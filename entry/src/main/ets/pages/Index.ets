@@ -3,6 +3,7 @@ import { GameCell, Move } from '../entity/GameCell';
 import { move } from '../service/Move';
 import { UniqueRandomGenerator } from '../utils/RandomGenerator';
 import { Board } from '../component/Board';
+import { generateId, generatePosition, generateValue, Position, unusedId } from '../service/Generate';
 
 @AnimatableExtend(Text)
 function animatableLocation(move: GameCell) {
@@ -13,11 +14,11 @@ function animatableLocation(move: GameCell) {
 @Component
 struct Index {
   @State board: number[][] = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
-  @State xList: number[] = [140, 70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  @State yList: number[] = [70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  @State valueList: number[] = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  @State existingId: number[] = [0, 1];
-  @State unusedId: number[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+  @State xList: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  @State yList: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  @State valueList: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  @State existingId: number[] = [];
+  @State unusedId: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
   @State nextIdQueue: number[] = [this.existingId.length];
   @State nextX: number = -1;
   @State nextY: number = -1;
@@ -25,7 +26,31 @@ struct Index {
   // 不存在元素的坐标
   @State unusedPosition: number = 0;
 
+  generateCell(): void {
+    let position: Position = generatePosition(this.xList, this.yList);
+    let id: number = generateId();
+    let value: number = generateValue();
+    this.xList[id] = position.x;
+    this.yList[id] = position.y;
+    this.valueList[id] = value;
+  }
+
+  removeCell(moveId: number): void {
+    this.valueList[moveId] = 0;
+    setTimeout(() => {
+      this.xList[moveId] = 0;
+      this.yList[moveId] = 0;
+    }, 1000);
+    unusedId.push(moveId);
+  }
+
+  doubleCell(moveId: number): void {
+    this.valueList[moveId] *= 2;
+  }
+
   aboutToAppear(): void {
+    this.generateCell();
+    this.generateCell();
   }
 
   generateRandom(max: number, exclude: number[]): number {
@@ -225,47 +250,34 @@ struct Index {
                 this.yList[index] += moveYList[index];
               });
 
+              // 处理合并动作
               setTimeout(() => {
                 moveList.forEach((move: Move) => {
                   switch (move.action) {
                     case 'disappear':
-                      this.valueList[move.id] = 0;
-                      setTimeout(() => {
-                        this.xList[move.id] = 0;
-                        this.yList[move.id] = 0;
-                      }, 1000);
-                      this.existingId.splice(this.existingId.indexOf(move.id), 1);
-                      this.unusedId.push(move.id);
+                      this.removeCell(move.id);
                       break;
                     case 'double':
-                      this.valueList[move.id] *= 2;
+                      this.doubleCell(move.id);
                       break;
                   }
                 });
               }, 100);
 
               setTimeout(() => {
-                if (this.unusedId.length === 0) {
-                  console.log('Game Over');
-                  return;
+                // TODO 广度优先搜索判断是否结束
+                this.generateCell();
+                if (unusedId.length === 0) {
+                  console.info("Game Over");
+                  AlertDialog.show({
+                    title: "Game Over",
+                    message: "",
+                    offset: { dx: 0, dy: -20 },
+                    alignment: DialogAlignment.Bottom,
+                    backgroundBlurStyle: BlurStyle.BACKGROUND_ULTRA_THICK,
+                    height: 300
+                  });
                 }
-
-                const generatedValue: number = this.generateRandom(10, []) > 7 ? 4 : 2;
-                const position: number[] = this.generateRandomPosition();
-                const generatedX: number = position[0] * 70;
-                const generatedY: number = position[1] * 70;
-                // TODO 如果没有可以用的则游戏结束？
-                const generatedId: number = this.unusedId.shift()!;
-                console.log('id: ', generatedId, 'value: ', generatedValue, ' position: ', position.toString());
-
-                this.xList[generatedId] = generatedX;
-                this.yList[generatedId] = generatedY;
-                this.valueList[generatedId] = generatedValue;
-
-                this.existingId.push(generatedId);
-
-                console.log('existing', this.existingId);
-                console.log('unused', this.unusedId);
               }, 200);
             }
           }

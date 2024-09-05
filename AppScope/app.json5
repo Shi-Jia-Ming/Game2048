@@ -1,0 +1,10 @@
+{
+  "app": {
+    "bundleName": "com.stark.game",
+    "vendor": "example",
+    "versionCode": 1000000,
+    "versionName": "1.0.0",
+    "icon": "$media:icon2048",
+    "label": "$string:app_name"
+  }
+}
